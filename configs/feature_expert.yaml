@@ -1,0 +1,10 @@
+name: "FeatureExpertPast"
+batch_size: 16
+lr: 0.001
+max_epochs: 200
+save_every_n_epochs: 2
+rate_undersampling: 2.0
+pos_weight: 3
+rate_undersampling: 2
+agg_step: 0
+pos_step: 2
