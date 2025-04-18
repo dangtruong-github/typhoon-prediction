@@ -3,9 +3,9 @@ from torchvision import datasets, transforms
 from torch.utils.data import DataLoader, Subset, random_split
 
 from torchvision import datasets, transforms
-import pytorch_lightning as pl
+import lightning as L
 
-class MNISTDataModule(pl.LightningDataModule):
+class MNISTDataModule(L.LightningDataModule):
     def __init__(self, data_dir='./datasets', batch_size=64):
         super().__init__()
         self.data_dir = data_dir

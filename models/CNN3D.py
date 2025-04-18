@@ -2,12 +2,9 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from models.BaseModel import BaseModel
-
-class CNN3D(BaseModel):
-    def __init__(self, in_channels=1, num_classes=1,
-                 lr=1e-3, threshold=0.5, pos_weight=3):
-        super(CNN3D, self).__init__(lr, threshold, pos_weight)
+class CNN3D(nn.Module):
+    def __init__(self, in_channels=1, num_classes=1):
+        super(CNN3D, self).__init__()
         
         self.conv1 = nn.Conv3d(in_channels, 32, kernel_size=3, stride=1, padding=1)
         self.bn1 = nn.BatchNorm3d(32)

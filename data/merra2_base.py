@@ -116,85 +116,25 @@ class MerraBasePast(Dataset, ABC):
     def __getitem__(self, idx):
         label = self.df.at[idx, "Label"]
         data_path = self.df.at[idx, "Path"]
+        file_name = self.df.at[idx, "Filename"]
         cur_step = self.df.at[idx, "Step"]
         
         data = self.load_data(data_path, cur_step)
 
         data = data.astype('float32')
         
-        return data, label
+        return data, label, file_name
 
 
 class MerraBaseFullMap(Dataset, ABC):
     def __init__(self,
-        type_dataset: str, merra_path: Path, agg_step: int = 0,
-        agg_alpha: float = 0.85, pos_steps: List[int] | np.array = [0],
-        neg_steps: List[int] | np.array = np.arange(20, 41),
-        rus: float = 2
-    ):        
-        if type_dataset not in ["train", "val", "test"]:
-            raise ValueError(f"type_dataset={type_dataset} invalid. Try either 'train', 'val', or 'test'")
-
-        self.df = pd.read_csv(merra_path)
-
+        data_df: pd.DataFrame, agg_step: int = 0,
+        agg_alpha: float = 0.85,
+    ):
+        self.df = data_df
         self.agg_step = agg_step
         self.agg_alpha = agg_alpha
         self.weights = np.array([agg_alpha ** i for i in range(agg_step+1)])
-        self.pos_ind = pos_steps[0]
-        self.rus = rus
-
-        self.setup_ib(type_dataset)
-
-        # data["Path"] = data["Path"].str.replace("nasa-merra2", "nasa-merra2.old")
-        
-        self.df.loc[self.df['Label'] != 1, 'Label'] = 0
-
-        # train val test by year
-        if type_dataset == "train":
-            self.df = self.df.loc[self.df['Year'].isin(np.arange(1980, 2011))]
-        elif type_dataset == "val":
-            self.df = self.df.loc[self.df['Year'].isin(np.arange(2011, 2017))]
-        else:
-            self.df = self.df.loc[self.df['Year'].isin(np.arange(2017, 2023))]
-
-        # final check
-        self.df = self.df.reset_index(drop=True)
-
-        print(f"self.rus: {self.rus}, {type(self.rus)}")
-
-        if type_dataset != "test":
-            self.df = undersample_data(self.df, ratio=self.rus)
-
-        # print(self.df)
-        # print(self.pos_ind)
-
-        # os.makedirs("/N/slate/tnn3/TruongChu/merraRun/datasets/csv/test/", exist_ok=True)
-        # self.df.to_csv("/N/slate/tnn3/TruongChu/merraRun/datasets/csv/test/pos_{}.csv".format(self.pos_ind))
-        # assert 0 == 1
-
-    def setup_ib(self, type_dataset):
-        ibtracs_file = '/N/slate/tnn3/TruongChu/merraRun/datasets/csv/FIRST_MERRA2_IBTRACS.csv'
-        ibtracs_data = pd.read_csv(ibtracs_file)
-
-        ibtracs_data = ibtracs_data[(ibtracs_data['LAT'] >= 0) &
-                        (ibtracs_data['LAT'] <= 30) &
-                        (ibtracs_data['LON'] >= 100) &
-                        (ibtracs_data['LON'] <= 150)]
-        
-        self.ibtracs_filenames = set(
-        ibtracs_data['ISO_TIME'].apply(lambda x: convert_timestamp_to_filename(
-            x, time_steps_back=self.pos_ind
-        )))
-
-        if type_dataset == "test":
-            self.df['Label'] = 0
-            matching_indices = self.df.index[self.df['Filename'].isin(self.ibtracs_filenames)]
-            for idx in matching_indices:
-                storm_idx = min(idx + self.pos_ind, len(self.df) - 1)
-                self.df.loc[idx:storm_idx, 'Label'] = 1
-        else:
-            self.df['Label'] = np.where(self.df['Filename'].isin(self.ibtracs_filenames), 1, self.df['Label'])
-        
 
     @abstractmethod
     def load_data_each(self, nc_path):
@@ -248,6 +188,7 @@ class MerraBaseFullMap(Dataset, ABC):
     # Load data and agg into a sample
     def __getitem__(self, idx):
         label = self.df.at[idx, "Label"]
+        file_name = self.df.at[idx, "Filename"]
         data_path = self.df.at[idx, "Path"]
         # cur_step = self.df.at[idx, "Step"]
         
@@ -255,4 +196,8 @@ class MerraBaseFullMap(Dataset, ABC):
 
         data = data.astype('float32')
         
-        return data, label
+        return {
+            "data": data,
+            "label": label,
+            "file_name": file_name
+        }

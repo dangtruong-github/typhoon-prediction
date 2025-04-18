@@ -2,13 +2,10 @@ import torch
 import torch.nn as nn
 from torchsummary import summary
 
-from models.BaseModel import BaseModel
-
-class CNN2D(BaseModel):
-    def __init__(self, in_channels = 3, num_classes=1,
-                 lr=1e-3, threshold=0.5, pos_weight=3):
+class CNN2D(nn.Module):
+    def __init__(self, in_channels = 3, num_classes=1):
         print(in_channels)
-        super(CNN2D, self).__init__(lr, threshold, pos_weight)
+        super(CNN2D, self).__init__()
 
         self.conv_layers = nn.Sequential(
             nn.Conv2d(in_channels=in_channels, out_channels=16, kernel_size=3, padding=1),

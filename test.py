@@ -2,7 +2,7 @@ import argparse
 import os
 import yaml
 import sys
-from pytorch_lightning import Trainer
+from lightning import Trainer
 
 from data.total import get_data_module
 from models.total import get_model

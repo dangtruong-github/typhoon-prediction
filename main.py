@@ -6,17 +6,19 @@ import yaml
 import os
 from datetime import datetime
 import sys
+import numpy as np
 
-from pytorch_lightning import Trainer
-from pytorch_lightning.callbacks import ModelCheckpoint
-from pytorch_lightning.utilities import rank_zero_info
-from pytorch_lightning.loggers import TensorBoardLogger
+import torch
+
+from lightning import Trainer
+from lightning.pytorch.callbacks import ModelCheckpoint
+from lightning.pytorch.loggers import TensorBoardLogger
+from lightning.pytorch.utilities import rank_zero_info
 
 from data.total import get_data_module
 from models.total import get_model
 from evaluation.total import evaluate_model
 from evaluation.plotting import plot_all
-
 
 # Custom Trainer that includes custom evaluation
 class CustomTrainer(Trainer):
@@ -27,17 +29,26 @@ class CustomTrainer(Trainer):
         print("🔍 Running custom evaluation inside Trainer...")
         model = self.model if hasattr(self, "model") else args[0]
         datamodule = kwargs.get("datamodule", None)
-        file_output = kwargs.get("file_output", None)
+        folder_output = kwargs.get("folder_output", None)
         data_name = kwargs.get("data_name", None)
 
         assert datamodule is not None, "⚠️ Custom evaluation skipped: No datamodule provided."
-        assert file_output is not None, "⚠️ Custom evaluation skipped: No file output path provided."
+        assert folder_output is not None, "⚠️ Custom evaluation skipped: No file output path provided."
         assert data_name is not None, "⚠️ Custom evaluation skipped: No data module name provided."
 
-        test_loader = datamodule.test_dataloader()
-        metrics_returned = evaluate_model(model, test_loader)
+        test_loader = datamodule.val_dataloader()
+        metrics_returned = evaluate_model(
+            model.model, test_loader,
+            folder_output, eval_name=data_name
+        )
 
-        with open(file_output, "w+") as f:
+        file_output = os.path.join(folder_output, "evaluation.txt")
+
+        if os.path.isfile(file_output) is False:
+            f_output = open(file_output, "w")
+            f_output.close()
+
+        with open(file_output, "a") as f:
             f.write(f"{data_name}\n")
             for key, item in metrics_returned.items():
                 print("{}: {:.5f}".format(key, item))
@@ -87,6 +98,9 @@ def parser_total():
 
     return args
 
+def get_checkpoints():
+    pass
+
 def main():
     args = parser_total()
 
@@ -97,6 +111,8 @@ def main():
                                   f"pos_{args.pos_step}",
                                   "rus_{:.2f}_pos_{:.2f}".format(args.rate_undersampling, args.pos_weight),
                                   f"run_{timestamp}")
+    
+    setattr(args, "exp_dir", experiment_dir)
 
     ckpt_dir = os.path.join(experiment_dir, "checkpoints")
     os.makedirs(ckpt_dir, exist_ok=True)
@@ -124,7 +140,7 @@ def main():
     print(data_module.test_set.df["Label"].value_counts())
 
     # Model
-    model, model_func = get_model(args)
+    model = get_model(args)
 
     # TensorBoard Logger
     tb_logger = TensorBoardLogger(save_dir=experiment_dir, name="lightning_logs")
@@ -169,23 +185,33 @@ def main():
     # Plot validation loss
     plot_all(model.log_history, experiment_dir)
 
-    file_output = os.path.join(experiment_dir, "evaluation.txt")
-
     # Load best model for testing
     if best_val_loss_cb.best_model_path:
         print(f"🏆 Loading best model from {best_val_loss_cb.best_model_path}")
-        model = model_func.load_from_checkpoint(best_val_loss_cb.best_model_path)
+
+        checkpoint = torch.load(best_val_loss_cb.best_model_path, weights_only=False)
+
+        print(checkpoint.keys())
+
+        # If the checkpoint contains a model state dictionary, load it into your model
+        model.model.load_state_dict(checkpoint['state_dict'])
+
         # Test with best model
         trainer.test(model, datamodule=data_module,
-                     data_name="val_loss", file_output=file_output)
+                     data_name="val_loss", folder_output=args.exp_dir)
 
     # Load best model for testing
     if best_val_f1_cb.best_model_path:
         print(f"🏆 Loading best model from {best_val_f1_cb.best_model_path}")
-        model = model_func.load_from_checkpoint(best_val_f1_cb.best_model_path)
+        checkpoint = torch.load(best_val_f1_cb.best_model_path, weights_only=False)
+
+        print(checkpoint.keys())
+
+        # If the checkpoint contains a model state dictionary, load it into your model
+        model.model.load_state_dict(checkpoint['state_dict'])
         # Test with best model
         trainer.test(model, datamodule=data_module,
-                     data_name="val_loss", file_output=file_output)
+                     data_name="val_f1", folder_output=args.exp_dir)
 
     # Clean up old checkpoints except best
     # Example usage:

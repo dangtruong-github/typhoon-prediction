@@ -3,9 +3,9 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from models.BaseModel import BaseModel
 
-class SimpleCNN(BaseModel):
+
+class SimpleCNN(nn.Module):
     def __init__(self, lr=1e-3, threshold=0.5):
         super().__init__(lr=lr, threshold=threshold)
         self.conv1 = nn.Conv2d(1, 8, 3, padding=1)

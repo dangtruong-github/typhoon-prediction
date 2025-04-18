@@ -2,6 +2,8 @@ import torch
 import torch.nn.functional as F
 
 import numpy as np
+import pandas as pd
+import os
 
 from evaluation.Accuracy import accuracy_func
 from evaluation.F1_all import precision_all, recall_all, f1_all
@@ -20,21 +22,36 @@ evaluation_metrics = {
     "roc_auc": roc_auc_func
 }
 
-def evaluate_model(model, loader, threshold=0.5):
+def evaluate_model(model, loader, folder_output, eval_name, threshold=0.5):
     model.eval()
     model.to(device)
 
     probs_total = np.empty((0, ))
     y_total = np.empty((0, ))
+    filenames_total = []
 
     with torch.no_grad():
-        for x, y in loader:
+        for batch in loader:
+            # x, y, file_name = batch
+            x = batch["data"]
+            y = batch["label"]
+            file_name = batch["file_name"]
             x, y = x.to(device), y.to(device)
             outputs = model(x)
             probs = F.sigmoid(outputs).view(-1)
 
             probs_total = np.concatenate([probs_total, probs.cpu()])
             y_total = np.concatenate([y_total, y.cpu()])
+            
+            filenames_total.extend(file_name)
+
+    # Save results to CSV
+    results_df = pd.DataFrame({
+        "filename": filenames_total,
+        "label": y_total.astype(int),
+        "probability": probs_total
+    })
+    results_df.to_csv(os.path.join(folder_output, "{}_results.csv".format(eval_name)), index=False)
 
     eval_results = {}
 

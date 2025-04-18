@@ -7,8 +7,6 @@ from torchsummary import summary
 from timm.models.vision_transformer import PatchEmbed, Block
 # from transformers import ViTImageProcessor, ViTForImageClassification
 
-from models.BaseModel import BaseModel
-
 class AttentionBlock(nn.Module):
     def __init__(self, embed_dim, hidden_dim, num_heads, dropout=0.0):
         """Attention Block.
@@ -122,7 +120,7 @@ class ViT_scratch(nn.Module):
             x = x.flatten(2, 4)  # [B, H'*W', C*p_H*p_W]
         return x
 
-class ViT_remaster(BaseModel):
+class ViT_remaster(nn.Module):
     def __init__(
         self,
         img_size = [61, 81],
@@ -135,9 +133,8 @@ class ViT_remaster(BaseModel):
         head_dim = 256,
         num_classes = 1,
         dropout=0.1,
-        lr=1e-3, threshold=0.5, pos_weight=3):
-        
-        super().__init__(lr, threshold, pos_weight)
+    ):   
+        super().__init__()
         self.patch_embed = PatchEmbed(img_size, patch_size, inp_channels, embed_dim)
         num_patches = self.patch_embed.num_patches
         

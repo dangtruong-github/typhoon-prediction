@@ -1,8 +1,6 @@
 import torch
 import torch.nn as nn
 
-from models.BaseModel import BaseModel
-
 class BasicBlock(nn.Module):
     def __init__(self,
         in_features = 64, out_features = 64,
@@ -38,12 +36,12 @@ class BasicBlock(nn.Module):
         
         return x
 
-class ResNet18(BaseModel):
+class ResNet18(nn.Module):
     def __init__(self,
-        in_channels = 131, num_residual_block =[3,4,6,3],
-        lr=1e-3, threshold=0.5, pos_weight=3
+        in_channels = 131,
+        num_residual_block = [3,4,6,3],
     ):
-        super().__init__(lr, threshold, pos_weight)
+        super().__init__()
         self.conv1 = nn.Conv2d(in_channels,64,7,2,3,bias = False)
         self.bn1 = nn.BatchNorm2d(64)
         self.relu = nn.ReLU(True)

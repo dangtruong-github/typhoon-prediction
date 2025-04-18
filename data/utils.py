@@ -1,6 +1,7 @@
 import numpy as np
 import os
 from datetime import datetime, timedelta
+import pandas as pd
 
 omega = 7.29 * 1e-5
 
@@ -32,18 +33,34 @@ def meshgrid(lat, lon, lvl = 1):
     
     return lat_grid, lon_grid
 
+def lat_lon_grid_fullmap(lat, lon):
+    lat_grid, lon_grid = meshgrid(lat, lon, 1)
+
+    lat_filter = (lat_grid[0, :, 0] >= 0) & (lat_grid[0, :, 0] <= 30)
+    lon_filter = (lon_grid[0, 0, :] >= 100) & (lon_grid[0, 0, :] <= 150)
+
+    lat_grid = lat_grid[:, lat_filter, :]
+    lon_grid = lon_grid[:, :, lon_filter]
+
+    lat_grid = lat_grid[:, :, :81]
+    lon_grid = lon_grid[:, :61, :]
+
+    return lat_grid, lon_grid
+
 def get_save_path(nc_path, type_save="past"):
         base_folder = "/N/scratch/tnn3/dataTotal/merra2_rsync/"
         if type_save == "full_map":
             base_folder = "/N/scratch/tnn3/dataTotal/merra2_preprocessed_rsync/"
         new_folder = "truong/feature_expert"
         extracted_path = "/".join(nc_path.split("/")[-2:]).replace(".nc", ".npy")
+        extracted_load_path = nc_path.split("/")[-1]
 
         save_path = os.path.join(base_folder, new_folder, extracted_path)
+        load_path = os.path.join(base_folder, extracted_load_path)
 
         os.makedirs(os.path.dirname(save_path), exist_ok=True)
 
-        return save_path
+        return load_path, save_path
 
 def convert_timestamp_to_filename(timestamp, time_steps_back=0):
     try:
@@ -60,3 +77,16 @@ def convert_timestamp_to_filename(timestamp, time_steps_back=0):
     except ValueError as e:
         print(f"Error parsing timestamp: {timestamp}. Ensure it is in 'YYYY-MM-DD HH:MM:SS' format.")
         return None
+
+def undersample_data(data, label_column="Label", ratio=10):
+
+    data_minority = data[data[label_column] == 1]
+    data_majority = data[data[label_column] == 0]
+    
+    target_majority_count = int(len(data_minority) * ratio)
+    data_majority_sampled = data_majority.sample(n=target_majority_count, random_state=42)
+    
+    undersampled_data = pd.concat([data_minority, data_majority_sampled], axis=0)
+    undersampled_data = undersampled_data.sample(frac=1, random_state=42).reset_index(drop=True)
+    
+    return undersampled_data
