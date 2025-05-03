@@ -49,7 +49,7 @@ def lat_lon_grid_fullmap(lat, lon):
 
 def get_save_path(nc_path, type_save="past"):
         base_folder = "/N/scratch/tnn3/dataTotal/merra2_rsync/"
-        if type_save == "full_map":
+        if type_save == "fullmap":
             base_folder = "/N/scratch/tnn3/dataTotal/merra2_preprocessed_rsync/"
         new_folder = "truong/feature_expert"
         extracted_path = "/".join(nc_path.split("/")[-2:]).replace(".nc", ".npy")

@@ -2,6 +2,7 @@ from models.ResNet18 import ResNet18
 from models.CNN2D import CNN2D
 from models.CNN3D import CNN3D
 from models.ViT import ViT_remaster as ViT
+from models.TCGPNet import TCGPNet
 
 from models.BaseModel import BaseModel
 
@@ -20,5 +21,15 @@ def retrieve_model(args):
         return CNN3D(in_channels=1)
     elif args.model == "ViT":
         return ViT(lr=args.lr)
+    elif args.model == "SwinTransformer":  
+        predictor_configs = [3, 3, 3, 3]
+        return TCGPNet(
+            img_size = (33, 33),
+            predictor_configs=predictor_configs,
+            patch_size=4,
+            window_size=4,
+            depths=[2, 2],
+            num_heads=[3, 6],
+        )
     else:
         raise NotImplementedError

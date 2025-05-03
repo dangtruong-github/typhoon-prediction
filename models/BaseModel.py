@@ -41,6 +41,9 @@ class BaseModel(L.LightningModule):
         # x, y, _ = batch
         x = batch["data"]
         y = batch["label"]
+
+        print(x.shape)
+
         logits = self.model.forward(x)
 
         loss = self.loss_fn(logits, y.float().view(-1, 1))
