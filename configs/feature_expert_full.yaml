@@ -1,6 +1,6 @@
 name: "FeatureExpertFull"
 type_data: "past"
-type_retrieve: "expert"
+type_retrieve: "full"
 model: "SwinTransformer"
 batch_size: 128
 lr: 0.0001

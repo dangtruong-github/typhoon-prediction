@@ -139,6 +139,10 @@ def main():
     print(data_module.val_set.df["Label"].value_counts())
     print(data_module.test_set.df["Label"].value_counts())
 
+    dummy_data = data_module.train_set.__getitem__(0)
+    print(f"dummy_data['data'].shape: {dummy_data["data"].shape}")
+    print(data_module.train_set.type_retrieve)
+
     # Model
     model = get_model(args)
 

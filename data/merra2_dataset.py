@@ -12,6 +12,8 @@ if __name__ == "__main__":
 
 from data.utils import get_save_path
 from data.strategy.feature_expert import get_feature_expert
+from data.strategy.full import get_full
+
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
@@ -33,17 +35,26 @@ class Merra2_Dataset(Dataset):
         self.agg_alpha = agg_alpha
         self.stat_path = stat_path
         self.type_data = type_data
+        self.type_retrieve = type_retrieve
         self.weights = np.array([agg_alpha ** i for i in range(agg_step+1)])
         
         if type_retrieve == "expert":
+            # print("HERE EXPERT")
             self.func_retrieve = get_feature_expert
+        elif type_retrieve == 'full':
+            # print("HERE FULL")
+            self.func_retrieve = get_full
 
     def load_data_each(self, nc_path):
+        # print("ALABAMA")
         if os.path.isfile(nc_path) is False:
+            print("WE ARE HERE FILE AINT EXIST")
+            # print(f"type_retrieve: {self.type_retrieve}")
             return_data = self.func_retrieve("dummy.nc", self.stat_path, type_data=self.type_data)
 
             return return_data
         
+        """
         load_path, save_path = get_save_path(nc_path, type_save=self.type_data)
 
         if os.path.isfile(save_path):
@@ -55,11 +66,13 @@ class Merra2_Dataset(Dataset):
                 os.remove(save_path)
 
         print(load_path)
+        """
 
-        res = self.func_retrieve(load_path, self.stat_path, self.type_data)
+        res = self.func_retrieve(nc_path, self.stat_path, self.type_data)
 
         # print(res.shape)
-        print(save_path)
+        
+        # print(save_path)
 
         # assert 1 == 0
         # np.save(save_path, res)

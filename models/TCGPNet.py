@@ -103,7 +103,14 @@ class TCGPNet(nn.Module):
 
 
 if __name__ == "__main__":
-    predictor_configs = [3, 3, 3, 3]
+    # Adjust predictor_configs to match the dummy input's channel dimension (228)
+    # Let's divide 228 channels evenly across predictors
+    num_predictors = 4  # Keeping the same number of predictors
+    channels_per_predictor = 228 // num_predictors
+    predictor_configs = [channels_per_predictor] * num_predictors
+    # Adjust the last one in case 228 isn't divisible by 4
+    predictor_configs[-1] = 228 - sum(predictor_configs[:-1])
+    
     model = TCGPNet(
         img_size=(33, 33),
         predictor_configs=predictor_configs,
@@ -113,11 +120,8 @@ if __name__ == "__main__":
         num_heads=[3, 6],
     )
 
-    # Fix torch.random to torch.rand
-    dummy_input = torch.rand((32, 13, 33, 33))
+    # Keep the original dummy input shape
+    dummy_input = torch.rand((32, 228, 33, 33))
 
-    # Ensure model is properly defined before using
     output = model(dummy_input)
-
-    print(output.shape)
-
+    print(output.shape)  # Should be (32, 2)
