@@ -47,20 +47,13 @@ def lat_lon_grid_fullmap(lat, lon):
 
     return lat_grid, lon_grid
 
-def get_save_path(nc_path, type_save="past"):
-        base_folder = "/N/scratch/tnn3/dataTotal/merra2_rsync/"
-        if type_save == "fullmap":
-            base_folder = "/N/scratch/tnn3/dataTotal/merra2_preprocessed_rsync/"
-        new_folder = "truong/feature_expert"
-        extracted_path = "/".join(nc_path.split("/")[-2:]).replace(".nc", ".npy")
-        extracted_load_path = nc_path.split("/")[-1]
+def get_save_path(nc_path):
+    new_folder = "/N/scratch/tnn3/data_fullmap"
+    extracted_path = nc_path.split("/")[-1].replace(".nc", ".pt")
 
-        save_path = os.path.join(base_folder, new_folder, extracted_path)
-        load_path = os.path.join(base_folder, extracted_load_path)
+    load_path = os.path.join(new_folder, extracted_path)
 
-        os.makedirs(os.path.dirname(save_path), exist_ok=True)
-
-        return load_path, save_path
+    return load_path
 
 def convert_timestamp_to_filename(timestamp, time_steps_back=0):
     try:
@@ -79,9 +72,13 @@ def convert_timestamp_to_filename(timestamp, time_steps_back=0):
         return None
 
 def undersample_data(data, label_column="Label", ratio=10):
-
     data_minority = data[data[label_column] == 1]
     data_majority = data[data[label_column] == 0]
+    
+    current_ratio = len(data_majority) / len(data_minority)
+    
+    if current_ratio <= ratio:
+        return data  # Already sufficiently balanced, no need to undersample
     
     target_majority_count = int(len(data_minority) * ratio)
     data_majority_sampled = data_majority.sample(n=target_majority_count, random_state=42)

@@ -22,7 +22,7 @@ def retrieve_model(args):
     elif args.model == "ViT":
         return ViT(lr=args.lr)
     elif args.model == "SwinTransformer":  
-        predictor_configs = [3, 3, 3, 3]
+        predictor_configs = [1, 1, 1, 25, 25, 25, 25, 25, 25, 25, 25, 25]
         return TCGPNet(
             img_size = (33, 33),
             predictor_configs=predictor_configs,
@@ -30,6 +30,7 @@ def retrieve_model(args):
             window_size=4,
             depths=[2, 2],
             num_heads=[3, 6],
+            num_classes=1
         )
     else:
         raise NotImplementedError

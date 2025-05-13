@@ -68,7 +68,7 @@ def parser_total():
     parser = argparse.ArgumentParser()
     parser.add_argument('--rate_undersampling', type=float, default=-1)
     parser.add_argument('--pos_weight', type=float, default=-1)
-    parser.add_argument('--pos_step', type=int, default=0)
+    parser.add_argument('--pos_step', type=int, default=-1)
     parser.add_argument('--config', type=str, default="configs/feature_expert_full.yaml")
     parser.add_argument('--model', type=str, default="N/A")
     args = parser.parse_args()
@@ -93,6 +93,8 @@ def parser_total():
         args.pos_weight = float(config.get('pos_weight', args.pos_weight))
     if args.rate_undersampling < 0:
         args.rate_undersampling = int(config.get('rate_undersampling', args.rate_undersampling))
+    if args.pos_step < 0:
+        args.pos_step = int(config.get('pos_step', args.pos_step))
     if args.model == "N/A":
         args.model = config.get('model', args.model)
 
@@ -164,7 +166,7 @@ def main():
         monitor='val_f1_1',
         mode='max',  # Use 'max' since higher F1 score is better
         save_top_k=3,
-        filename='best-val_f1-{epoch:02d}-{val_f1:.2f}',
+        filename='best-val_f1-{epoch:02d}-{val_f1_1:.2f}',
     )
 
     periodic_ckpt_cb = ModelCheckpoint(
