@@ -1,7 +1,6 @@
 ##########################
 ## main.py (Full version with: best model loading, timestamped checkpoints, smart cleanup)
 ##########################
-import argparse
 import yaml
 import os
 from datetime import datetime
@@ -10,98 +9,15 @@ import numpy as np
 
 import torch
 
-from lightning import Trainer
 from lightning.pytorch.callbacks import ModelCheckpoint
 from lightning.pytorch.loggers import TensorBoardLogger
-from lightning.pytorch.utilities import rank_zero_info
 
 from data.total import get_data_module
 from models.total import get_model
-from evaluation.total import evaluate_model
 from evaluation.plotting import plot_all
-
-# Custom Trainer that includes custom evaluation
-class CustomTrainer(Trainer):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-    def test(self, *args, **kwargs):
-        print("🔍 Running custom evaluation inside Trainer...")
-        model = self.model if hasattr(self, "model") else args[0]
-        datamodule = kwargs.get("datamodule", None)
-        folder_output = kwargs.get("folder_output", None)
-        data_name = kwargs.get("data_name", None)
-
-        assert datamodule is not None, "⚠️ Custom evaluation skipped: No datamodule provided."
-        assert folder_output is not None, "⚠️ Custom evaluation skipped: No file output path provided."
-        assert data_name is not None, "⚠️ Custom evaluation skipped: No data module name provided."
-
-        test_loader = datamodule.val_dataloader()
-        metrics_returned = evaluate_model(
-            model.model, test_loader,
-            folder_output, eval_name=data_name
-        )
-
-        file_output = os.path.join(folder_output, "evaluation.txt")
-
-        if os.path.isfile(file_output) is False:
-            f_output = open(file_output, "w")
-            f_output.close()
-
-        with open(file_output, "a") as f:
-            f.write(f"{data_name}\n")
-            for key, item in metrics_returned.items():
-                print("{}: {:.5f}".format(key, item))
-                f.write("{}: {:.5f}\n".format(key, item))
-
-def cleanup_checkpoints(checkpoint_dir, keep_prefixes):
-    for filename in os.listdir(checkpoint_dir):
-        full_path = os.path.join(checkpoint_dir, filename)
-        if os.path.isfile(full_path):
-            # Check if the filename matches any keep_prefixes
-            if any(filename.startswith(prefix) for prefix in keep_prefixes):
-                continue  # Skip removing matching files
-            os.remove(full_path)
-            rank_zero_info(f"🧹 Removed old checkpoint: {filename}")
-
-def parser_total():
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--rate_undersampling', type=float, default=-1)
-    parser.add_argument('--pos_weight', type=float, default=-1)
-    parser.add_argument('--pos_step', type=int, default=-1)
-    parser.add_argument('--config', type=str, default="configs/feature_expert_full.yaml")
-    parser.add_argument('--model', type=str, default="N/A")
-    args = parser.parse_args()
-
-    # Load config file
-    config = None
-    with open(args.config, 'r') as file:
-        config = yaml.safe_load(file)
-
-        print(f"Config:\n{config}")
-
-    # Update arguments with values from the config file if they exist
-    if config:
-        for key, value in config.items():
-            if hasattr(args, key) is False:
-                setattr(args, key, value)
-    else:
-        raise ValueError(f"Invalid config file {args.config}")
-
-    # Overwrite pos_weight if it's negative
-    if args.pos_weight < 0:
-        args.pos_weight = float(config.get('pos_weight', args.pos_weight))
-    if args.rate_undersampling < 0:
-        args.rate_undersampling = int(config.get('rate_undersampling', args.rate_undersampling))
-    if args.pos_step < 0:
-        args.pos_step = int(config.get('pos_step', args.pos_step))
-    if args.model == "N/A":
-        args.model = config.get('model', args.model)
-
-    return args
-
-def get_checkpoints():
-    pass
+from configs.parser import parser_total
+from trainer.trainer import CustomTrainer, CustomEarlyStopping
+from trainer.utils import cleanup_checkpoints
 
 def main():
     args = parser_total()
@@ -176,11 +92,13 @@ def main():
         filename='epoch-{epoch:02d}',
     )
 
+    early_stopping_cb = CustomEarlyStopping(patience=5, loss_threshold=1e-4)
+
     # Trainer
     trainer = CustomTrainer(
         max_epochs=args.max_epochs,
         accelerator='auto',
-        callbacks=[best_val_loss_cb, best_val_f1_cb, periodic_ckpt_cb],
+        callbacks=[best_val_loss_cb, best_val_f1_cb, periodic_ckpt_cb, early_stopping_cb],
         logger=tb_logger,
         log_every_n_steps=args.log_every_n_steps
     )
@@ -203,7 +121,7 @@ def main():
         model.model.load_state_dict(checkpoint['state_dict'])
 
         # Test with best model
-        trainer.test(model, datamodule=data_module,
+        trainer.custom_test(model=model, datamodule=data_module,
                      data_name="val_loss", folder_output=args.exp_dir)
 
     # Load best model for testing
@@ -216,7 +134,7 @@ def main():
         # If the checkpoint contains a model state dictionary, load it into your model
         model.model.load_state_dict(checkpoint['state_dict'])
         # Test with best model
-        trainer.test(model, datamodule=data_module,
+        trainer.custom_test(model=model, datamodule=data_module,
                      data_name="val_f1", folder_output=args.exp_dir)
 
     # Clean up old checkpoints except best

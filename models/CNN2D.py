@@ -44,4 +44,4 @@ if __name__ == "__main__":
     
     # x = torch.rand(2,228,64,64)
     print(summary(model,(228,61,81)))
-    model.load_state_dict(torch.load("/N/slate/tnn3/HaiND/01-06_report/result/model/trained_model_cnn2d_t2_rus4_cw2.pth"))
+    model.load_state_dict(torch.load("/N/slate/tnn3/TruongChu/merraRun/HaiND/result/model/trained_model_cnn2d_t2_rus4_cw2.pth"))

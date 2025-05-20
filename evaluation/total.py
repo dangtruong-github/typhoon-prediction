@@ -19,6 +19,9 @@ evaluation_metrics = {
     "precision_1": precision_all(1, True),
     "recall_1": recall_all(1, True),
     "f1_1": f1_all(1, True),
+    "precision_all": precision_all("weighted", True),
+    "recall_all": recall_all("weighted", True),
+    "f1_all": f1_all("weighted", True),
     "roc_auc": roc_auc_func
 }
 

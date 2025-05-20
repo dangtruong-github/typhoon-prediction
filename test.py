@@ -2,31 +2,11 @@ import argparse
 import os
 import yaml
 import sys
-from lightning import Trainer
+import torch
 
 from data.total import get_data_module
 from models.total import get_model
-from evaluation.total import evaluate_model
-
-# Custom Trainer that includes custom evaluation
-class CustomTrainer(Trainer):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-    def test(self, *args, **kwargs):
-        super().test(*args, **kwargs)
-
-        print("🔍 Running custom evaluation inside Trainer...")
-        model = self.model if hasattr(self, "model") else args[0]
-        datamodule = kwargs.get("datamodule", None)
-
-        assert datamodule is not None, "⚠️ Custom evaluation skipped: No datamodule provided."
-
-        test_loader = datamodule.test_dataloader()
-        metrics_returned = evaluate_model(model, test_loader)
-
-        for key, item in metrics_returned.items():
-            print("{}: {:.5f}".format(key, item))
+from trainer.trainer import CustomTrainer
 
 def parser_test():
     parser = argparse.ArgumentParser()
@@ -67,17 +47,27 @@ def test_folder(args):
     data_module = get_data_module(args)
     
     # Model
-    model, model_func = get_model(args)
+    model = get_model(args)
     
     # Load best checkpoint
     ckpt_dir = os.path.join(args.folder, "checkpoints")
-    best_ckpt_path = os.path.join(ckpt_dir, sorted(os.listdir(ckpt_dir))[-1])
-    print(f"🏆 Loading best model from {best_ckpt_path}")
-    model = model_func.load_from_checkpoint(best_ckpt_path)
     
     # Test
-    trainer = Trainer()
-    trainer.test(model, datamodule=data_module)
+    trainer = CustomTrainer()
+
+    for item in os.listdir(ckpt_dir):
+        if item[-5:] != ".ckpt":
+            continue
+        best_ckpt_path = os.path.join(ckpt_dir, item)
+        print(f"🏆 Loading best model from {best_ckpt_path}")
+
+        checkpoint = torch.load(best_ckpt_path, weights_only=False)
+
+        # If the checkpoint contains a model state dictionary, load it into your model
+        model.model.load_state_dict(checkpoint['state_dict'])
+
+        trainer.custom_test(model=model, datamodule=data_module,
+                     data_name=item, folder_output=ckpt_dir)
 
     sys.stdout.close()
     sys.stderr.close()
@@ -90,19 +80,3 @@ def main():
     
 if __name__ == '__main__':
     main()
-
-
-settings = {
-    "RUS 1:4 (CW dynamic)": [0.07,0.11,0.15,0.18,0.22,0.25,0.28,0.31,0.34],
-    "RUS 1:10 (CW dynamic)": [0.06,0.11,0.14,0.18,0.21,0.24,0.28,0.29,0.33],
-    "RUS 1:20 (CW dynamic)": [0.07,0.1,0.15,0.18,0.21,0.24,0.27,0.3,0.32],
-    "RUS 1:30 (CW dynamic)": [0.07,0.11,0.14,0.18,0.22,0.24,0.28,0.3,0.33],
-    "NO RUS (CW dynamic)": [0.06,0.11,0,14],
-
-    "RUS 1:4 (CW balanced)": [],
-    "RUS 1:10 (CW balanced)": [],
-
-    "RUS 1:20 (CW balanced)": [],
-    "RUS 1:30 (CW balanced)": [],
-    "NO RUS (CW balanced)": []
-}

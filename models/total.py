@@ -14,7 +14,7 @@ def get_model(args):
     
 def retrieve_model(args):
     if args.model == "ResNet":
-        return ResNet18(in_channels=13)
+        return ResNet18(in_channels=228)
     elif args.model == "CNN2D":
         return CNN2D(in_channels=13)
     elif args.model == "CNN3D":
